@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Notas · Acceso</title>
+<link rel="stylesheet" href="css/styles.css">
+<style>
+  #page-login { min-height: 100vh; }
+</style>
+</head>
+<body>
+
+<!-- ══ LANDING ══ -->
+<div id="page-landing" class="page active">
+  <div class="landing-inner">
+    <div class="landing-crest">
+      <img src="img/logo.png" width="100" height="100" alt="Logo INCOA" style="object-fit:cover;border-radius:50%;">
+    </div>
+    <h1 class="landing-title">Sistema de Notas</h1>
+    <p class="landing-sub">Plataforma Escolar · Ciclo 2025</p>
+    <div class="landing-divider"></div>
+    <p class="landing-label">Ingresar como</p>
+    <div class="role-cards">
+      <div class="role-card" onclick="showLogin('estudiante')">
+        <div class="rc-icon" style="background:rgba(100,160,220,0.15);display:flex;align-items:center;justify-content:center;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#64A0DC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div class="rc-name">Estudiante</div>
+        <div class="rc-desc">Código de acceso</div>
+      </div>
+      <div class="role-card" onclick="showLogin('maestro')">
+        <div class="rc-icon" style="background:rgba(180,140,220,0.15);display:flex;align-items:center;justify-content:center;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B48CDC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="rc-name">Profesor</div>
+        <div class="rc-desc">Usuario y contraseña</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Burbuja oculta de Administrador -->
+<div id="admin-bubble" onclick="showLogin('admin')">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+  </svg>
+</div>
+<div id="admin-bubble-tooltip">Admin</div>
+
+
+
+<!-- ══ LOGIN ══ -->
+<div id="page-login" class="page" style="display:none;flex-direction:row;align-items:stretch;">
+  <div class="login-left">
+    <div class="login-left-inner">
+      <button class="login-back" onclick="showPage('page-landing')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        Volver
+      </button>
+      <div class="login-brand">
+        <div class="login-crest">
+          <img src="img/logo.png" width="70" height="70" alt="Logo INCOA" style="object-fit:cover;border-radius:50%;">
+        </div>
+        <div class="login-brand-name">Sistema de Notas</div>
+        <div class="login-brand-sub">Plataforma Escolar</div>
+      </div>
+      <div class="login-role-badge">
+        <span class="dot" id="login-role-dot"></span>
+        <span id="login-role-label">—</span>
+      </div>
+    </div>
+  </div>
+  <div class="login-right">
+    <div class="login-form-box">
+      <h2 class="login-form-title">Iniciar sesión</h2>
+      <p class="login-form-sub">Ingresa tu código de acceso y contraseña.</p>
+      <div id="login-error" class="login-error"></div>
+      <div class="login-form-fields">
+        <div class="field">
+          <label>Código de acceso</label>
+          <input id="inp-codigo" class="input" type="text" placeholder="Ej. USER-001" autocomplete="username">
+        </div>
+        <div class="field">
+          <label>Contraseña</label>
+          <input id="inp-password" class="input" type="password" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary" onclick="doLogin()" style="margin-top:.5rem;justify-content:center;">
+          Entrar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="js/app.js"></script>
+<script>
+  let rolActual = "";
+
+  function showPage(id) {
+    document.querySelectorAll(".page").forEach(p => { p.classList.remove("active"); p.style.display = "none"; });
+    const el = document.getElementById(id);
+    el.style.display = "flex";
+    el.classList.add("active");
+    // Ocultar burbuja admin al entrar al login
+    const bubble = document.getElementById("admin-bubble");
+    const tooltip = document.getElementById("admin-bubble-tooltip");
+    const hide = id === "page-login";
+    if (bubble) bubble.style.display = hide ? "none" : "flex";
+    if (tooltip) tooltip.style.display = hide ? "none" : "";
+  }
+
+  function showLogin(rol) {
+    rolActual = rol;
+    const labels = { estudiante: "Estudiante", maestro: "Maestro", admin: "Administrador" };
+    const dots   = { estudiante: "dot-gold", maestro: "dot-green", admin: "dot-red" };
+    document.getElementById("login-role-label").textContent = labels[rol];
+    const dot = document.getElementById("login-role-dot");
+    dot.className = "dot " + dots[rol];
+    showPage("page-login");
+  }
+
+  async function doLogin() {
+    const codigo   = document.getElementById("inp-codigo").value.trim();
+    const password = document.getElementById("inp-password").value;
+    const errEl    = document.getElementById("login-error");
+    errEl.classList.remove("show");
+    if (!codigo || !password) { errEl.textContent = "Completa todos los campos."; errEl.classList.add("show"); return; }
+    try {
+      const data = await POST("/login", { codigo, password });
+      localStorage.setItem("sn_token", data.token);
+      const destinos = { estudiante: "dashboard-estudiante.html", maestro: "dashboard-maestro.html", admin: "dashboard-admin.html" };
+      window.location.href = destinos[data.rol] || "index.html";
+    } catch (e) {
+      errEl.textContent = e.message;
+      errEl.classList.add("show");
+    }
+  }
+
+  document.addEventListener("keydown", e => {
+    if (e.key === "Enter" && document.getElementById("page-login").classList.contains("active")) doLogin();
+  });
+</script>
+</body>
+</html>

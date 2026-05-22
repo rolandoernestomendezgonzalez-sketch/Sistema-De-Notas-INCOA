@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Notas · Estudiante</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div id="page-dash" class="page active dashboard">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="sidebar-crest">
+          <img src="img/logo.png" width="46" height="46" alt="Logo INCOA" style="object-fit:cover;border-radius:50%;">
+        </div>
+        <div class="sidebar-brand">Sistema de Notas <small>Plataforma Escolar</small></div>
+      </div>
+    </div>
+    <div class="sidebar-user">
+      <div class="sidebar-user-role" style="color:var(--gold)">Estudiante</div>
+      <div class="sidebar-user-name" id="sb-nombre">—</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Mi cuenta</div>
+      <div class="nav-item active">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Mis notas
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn-logout" onclick="logout()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Cerrar sesión
+      </button>
+    </div>
+  </div>
+
+  <!-- Contenido principal -->
+  <div class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Mis Calificaciones</div>
+        <div class="topbar-meta">Ciclo Escolar 2025</div>
+      </div>
+      <div class="topbar-right">
+        <div class="trim-selector" id="periodo-selector"></div>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <!-- Promedio general -->
+      <div class="promedio-box">
+        <div>
+          <div class="promedio-label">Promedio general del periodo</div>
+          <div class="promedio-val" id="promedio-val">—</div>
+        </div>
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+      </div>
+
+      <!-- Cards de notas -->
+      <div class="section-title" style="margin-bottom:1rem">Detalle por materia</div>
+      <div id="notas-grid" class="notas-grid"></div>
+
+      <!-- Historial completo -->
+      <div class="section-title" style="margin-bottom:.75rem">Historial completo</div>
+      <div class="data-card">
+        <table class="data-table">
+          <thead><tr><th>Materia</th><th>Periodo</th><th>Nota</th></tr></thead>
+          <tbody id="tabla-historial"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="js/app.js"></script>
+<script>
+  let usuario = null;
+  let periodos = [];
+  let periodoSel = null;
+
+  async function init() {
+    usuario = await requireAuth();
+    if (usuario.rol !== "estudiante") { window.location.href = "index.html"; return; }
+    document.getElementById("sb-nombre").textContent = usuario.nombre;
+
+    periodos = await GET("/periodos");
+    const activo = periodos.find(p => p.activo);
+    periodoSel = activo ? activo.id : (periodos[0]?.id || null);
+
+    renderPeriodoBtns();
+    await cargarNotas();
+  }
+
+  function renderPeriodoBtns() {
+    const sel = document.getElementById("periodo-selector");
+    if (!periodos.length) { sel.innerHTML = `<span style="font-size:12px;color:var(--gray-400)">Sin periodos</span>`; return; }
+    sel.innerHTML = periodos.map(p => `
+      <button class="trim-btn ${p.id === periodoSel ? 'active' : ''}"
+        onclick="selPeriodo(${p.id})">${p.nombre.replace(/ · \d{4}/,"")}</button>
+    `).join("");
+  }
+
+  async function selPeriodo(id) {
+    periodoSel = id;
+    renderPeriodoBtns();
+    await cargarNotas();
+  }
+
+  async function cargarNotas() {
+    const notas    = periodoSel ? await GET(`/estudiantes/${usuario.id}/notas?periodo_id=${periodoSel}`) : [];
+    const historial = await GET(`/estudiantes/${usuario.id}/notas`);
+
+    // Promedio
+    const vals = notas.map(n => n.nota).filter(v => v !== null && v !== undefined);
+    const prom = vals.length ? (vals.reduce((a,b) => a+b, 0) / vals.length) : null;
+    document.getElementById("promedio-val").textContent = prom !== null ? prom.toFixed(2) : "Sin notas";
+
+    // Cards
+    const grid = document.getElementById("notas-grid");
+    if (!notas.length) {
+      grid.innerHTML = `<p style="color:var(--gray-400);font-size:14px;grid-column:1/-1">No hay notas registradas para este periodo.</p>`;
+    } else {
+      grid.innerHTML = notas.map(n => {
+        const cls = n.nota >= 8 ? "high" : n.nota >= 6 ? "mid" : "low";
+        return `<div class="nota-card ${cls}">
+          <div class="nota-card-materia">${n.materia}</div>
+          <div class="nota-card-valor">${n.nota.toFixed(1)}</div>
+          <div class="nota-card-periodo">${n.periodo}</div>
+        </div>`;
+      }).join("");
+    }
+
+    // Historial
+    const tbody = document.getElementById("tabla-historial");
+    tbody.innerHTML = historial.length
+      ? historial.map(n => `<tr>
+          <td style="font-weight:500">${n.materia}</td>
+          <td style="color:var(--gray-400);font-size:12px">${n.periodo}</td>
+          <td>${gradePill(n.nota)}</td>
+        </tr>`).join("")
+      : `<tr><td colspan="3" style="text-align:center;color:var(--gray-400);padding:2rem">Sin historial registrado</td></tr>`;
+  }
+
+  async function logout() {
+    await POST("/logout").catch(() => {});
+    localStorage.removeItem("sn_token");
+    window.location.href = "index.html";
+  }
+
+  init();
+</script>
+</body>
+</html>

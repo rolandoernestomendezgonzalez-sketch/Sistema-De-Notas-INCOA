@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Notas · Maestro</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div id="page-dash" class="page active dashboard">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="sidebar-crest">
+          <img src="img/logo.png" width="32" height="32" alt="Logo INCOA" style="object-fit:cover;border-radius:50%;">
+        </div>
+        <div class="sidebar-brand">Sistema de Notas <small>Plataforma Escolar</small></div>
+      </div>
+    </div>
+    <div class="sidebar-user">
+      <div class="sidebar-user-role" style="color:var(--green)">Maestro</div>
+      <div class="sidebar-user-name" id="sb-nombre">—</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Gestión</div>
+      <div class="nav-item active">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Ingreso de notas
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn-logout" onclick="logout()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Cerrar sesión
+      </button>
+    </div>
+  </div>
+
+  <!-- Contenido -->
+  <div class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Ingreso de Notas</div>
+        <div class="topbar-meta">Selecciona materia y periodo</div>
+      </div>
+      <div class="topbar-right">
+        <span id="periodo-badge" class="periodo-badge periodo-closed hidden"></span>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <!-- Filtros -->
+      <div class="section-card">
+        <div class="filter-row">
+          <div class="field">
+            <label>Materia</label>
+            <select id="sel-materia" class="input" onchange="cargarTabla()">
+              <option value="">— Seleccionar —</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Periodo</label>
+            <select id="sel-periodo" class="input" onchange="cargarTabla()">
+              <option value="">— Seleccionar —</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla de notas -->
+      <div class="section-card" id="tabla-wrapper" style="display:none">
+        <div class="section-card-header">
+          <div class="section-title" id="tabla-titulo">Estudiantes</div>
+          <div style="font-size:12px;color:var(--gray-400)" id="ingresadas-label"></div>
+        </div>
+        <div class="data-card">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Estudiante</th>
+                <th>Código</th>
+                <th>Nota actual</th>
+                <th>Nueva nota</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-notas"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="placeholder" class="empty-state">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <p>Selecciona una materia y un periodo para ver los estudiantes.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="js/app.js"></script>
+<script>
+  let usuario = null;
+  let estudiantes = [];
+  let notasActuales = {};
+
+  async function init() {
+    usuario = await requireAuth();
+    if (usuario.rol !== "maestro" && usuario.rol !== "admin") { window.location.href = "index.html"; return; }
+    document.getElementById("sb-nombre").textContent = usuario.nombre;
+
+    // Cargar materias del maestro
+    const materias = await GET(`/maestros/${usuario.id}/materias`);
+    const selMat = document.getElementById("sel-materia");
+    if (materias.length) {
+      materias.forEach(m => { selMat.innerHTML += `<option value="${m.id}">${m.nombre}</option>`; });
+    } else {
+      selMat.innerHTML += `<option disabled>Sin materias asignadas</option>`;
+    }
+
+    // Cargar periodos
+    const periodos = await GET("/periodos");
+    const selPer = document.getElementById("sel-periodo");
+    if (periodos.length) {
+      periodos.forEach(p => { selPer.innerHTML += `<option value="${p.id}" ${p.activo?"selected":""}>${p.nombre}</option>`; });
+    } else {
+      selPer.innerHTML += `<option disabled>Sin periodos creados</option>`;
+    }
+
+    // Cargar estudiantes
+    estudiantes = await GET("/estudiantes");
+  }
+
+  async function cargarTabla() {
+    const matId = document.getElementById("sel-materia").value;
+    const perId = document.getElementById("sel-periodo").value;
+    if (!matId || !perId) {
+      document.getElementById("tabla-wrapper").style.display = "none";
+      document.getElementById("placeholder").style.display = "block";
+      return;
+    }
+
+    // Notas existentes
+    const notas = await GET(`/notas?materia_id=${matId}&periodo_id=${perId}`);
+    notasActuales = {};
+    notas.forEach(n => { notasActuales[n.estudiante_id] = n; });
+
+    const ingresadas = notas.length;
+    document.getElementById("ingresadas-label").textContent =
+      `${ingresadas} / ${estudiantes.length} notas ingresadas`;
+
+    // Periodo badge
+    const periodos = await GET("/periodos");
+    const per = periodos.find(p => p.id == perId);
+    const badge = document.getElementById("periodo-badge");
+    if (per) {
+      badge.textContent = per.activo ? "● Periodo abierto" : "● Periodo cerrado";
+      badge.className = `periodo-badge ${per.activo ? "periodo-open" : "periodo-closed"}`;
+      badge.classList.remove("hidden");
+    }
+
+    // Render tabla
+    const tbody = document.getElementById("tbody-notas");
+    if (!estudiantes.length) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--gray-400);padding:2rem">Sin estudiantes registrados</td></tr>`;
+    } else {
+      tbody.innerHTML = estudiantes.map((est, idx) => {
+        const nota = notasActuales[est.id];
+        const valorActual = nota ? gradePill(nota.nota) : `<span class="pill pill-gray">Sin nota</span>`;
+        return `<tr id="row-${est.id}">
+          <td style="color:var(--gray-400)">${String(idx+1).padStart(2,"0")}</td>
+          <td style="font-weight:500">${est.nombre}</td>
+          <td style="font-family:'Source Code Pro',monospace;font-size:12px;color:var(--gray-400)">${est.codigo}</td>
+          <td id="nota-actual-${est.id}">${valorActual}</td>
+          <td>
+            <input class="input-nota" type="number" min="0" max="10" step="0.1"
+              value="${nota ? nota.nota : ""}"
+              placeholder="—"
+              oninput="setStatus(${est.id},'typing'); debounceSave(${est.id},${matId},${perId},this)">
+          </td>
+          <td id="status-${est.id}" class="status-cell">
+            ${nota
+              ? `<span class="dot dot-green"></span><span style="color:var(--green)">Guardado</span>`
+              : `<span class="dot dot-gray"></span><span style="color:var(--gray-400)">Pendiente</span>`}
+          </td>
+        </tr>`;
+      }).join("");
+    }
+
+    document.getElementById("tabla-wrapper").style.display = "block";
+    document.getElementById("placeholder").style.display = "none";
+  }
+
+  function setStatus(estId, estado) {
+    const el = document.getElementById(`status-${estId}`);
+    if (!el) return;
+    if (estado === "typing")   el.innerHTML = `<span class="dot dot-gold"></span><span style="color:#7a5f0a">Editando…</span>`;
+    if (estado === "saving")   el.innerHTML = `<div class="saving-spinner"></div><span style="color:var(--gray-400)">Guardando…</span>`;
+    if (estado === "saved")    el.innerHTML = `<span class="dot dot-green"></span><span style="color:var(--green)">Guardado</span>`;
+    if (estado === "error")    el.innerHTML = `<span class="dot dot-red"></span><span style="color:var(--red)">Error</span>`;
+  }
+
+  async function guardarNota(estId, matId, perId, input) {
+    const val = parseFloat(input.value);
+    if (isNaN(val) || val < 0 || val > 10) {
+      toast("La nota debe ser entre 0 y 10", "error");
+      setStatus(estId, "error");
+      return;
+    }
+    setStatus(estId, "saving");
+    try {
+      await POST("/notas", { estudiante_id: estId, materia_id: matId, periodo_id: perId, valor: val });
+      setStatus(estId, "saved");
+      toast("Nota guardada");
+      // Actualizar columna nota actual
+      const celdaActual = document.getElementById(`nota-actual-${estId}`);
+      if (celdaActual) celdaActual.innerHTML = gradePill(val);
+      // Actualizar contador
+      const saved = document.querySelectorAll('[id^="status-"]');
+      let cnt = 0;
+      saved.forEach(el => { if (el.innerHTML.includes("Guardado")) cnt++; });
+      document.getElementById("ingresadas-label").textContent =
+        `${cnt} / ${estudiantes.length} notas ingresadas`;
+    } catch (e) {
+      setStatus(estId, "error");
+      toast("Error: " + e.message, "error");
+    }
+  }
+
+  async function logout() {
+    await POST("/logout").catch(() => {});
+    localStorage.removeItem("sn_token");
+    window.location.href = "index.html";
+  }
+
+  // Guarda la nota 800ms después de que el usuario deja de escribir, sin recargar
+  const _debounceTimers = {};
+  function debounceSave(estId, matId, perId, input) {
+    clearTimeout(_debounceTimers[estId]);
+    _debounceTimers[estId] = setTimeout(() => {
+      guardarNota(estId, matId, perId, input);
+    }, 800);
+  }
+
+  init();
+</script>
+</body>
+</html>

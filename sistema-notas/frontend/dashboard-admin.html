@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Notas · Administrador</title>
+<link rel="stylesheet" href="css/styles.css">
+<style>
+  .view { display:none; }
+  .view.active { display:block; }
+</style>
+</head>
+<body>
+
+<div id="page-dash" class="page active dashboard">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="sidebar-crest">
+          <img src="img/logo.png" width="46" height="46" alt="Logo INCOA" style="object-fit:cover;border-radius:50%;">
+        </div>
+        <div class="sidebar-brand">Sistema de Notas <small>Plataforma Escolar</small></div>
+      </div>
+    </div>
+    <div class="sidebar-user">
+      <div class="sidebar-user-role" style="color:var(--red)">Administrador</div>
+      <div class="sidebar-user-name" id="sb-nombre">—</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">General</div>
+      <div class="nav-item active" onclick="showView('v-panel',this)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Panel general
+      </div>
+      <div class="nav-section-label">Gestión</div>
+      <div class="nav-item" onclick="showView('v-usuarios',this)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Usuarios
+      </div>
+      <div class="nav-item" onclick="showView('v-materias',this)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Materias
+      </div>
+      <div class="nav-section-label">Control</div>
+      <div class="nav-item" onclick="showView('v-periodos',this)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Periodos
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn-logout" onclick="logout()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Cerrar sesión
+      </button>
+    </div>
+  </div>
+
+  <!-- Contenido -->
+  <div class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title" id="topbar-title">Panel de Administración</div>
+        <div class="topbar-meta">Ciclo Escolar 2025</div>
+      </div>
+      <div class="topbar-right" id="topbar-right"></div>
+    </div>
+
+    <div class="page-body">
+
+      <!-- ── PANEL GENERAL ── -->
+      <div id="v-panel" class="view active">
+        <div class="stat-grid" id="stats-grid">
+          <div class="spinner"></div>
+        </div>
+        <div class="admin-grid">
+          <div>
+            <div class="section-title" style="margin-bottom:.75rem">Estado del sistema</div>
+            <div class="data-card" style="padding:0 1rem">
+              <div id="info-periodos"></div>
+            </div>
+          </div>
+          <div>
+            <div class="section-title" style="margin-bottom:.75rem">Avance por materia</div>
+            <div class="data-card">
+              <table class="data-table">
+                <thead><tr><th>Materia</th><th>Maestro</th><th>Progreso</th></tr></thead>
+                <tbody id="avance-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── USUARIOS ── -->
+      <div id="v-usuarios" class="view">
+        <div class="section-card-header" style="margin-bottom:1rem">
+          <div>
+            <div class="section-title">Gestión de Usuarios</div>
+            <div id="capacidad-label" style="font-size:12px;color:var(--gray-400);margin-top:3px"></div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openModalUsuario()">+ Nuevo usuario</button>
+        </div>
+        <div class="data-card">
+          <table class="data-table">
+            <thead><tr><th>Nombre</th><th>Código</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <tbody id="usuarios-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── MATERIAS ── -->
+      <div id="v-materias" class="view">
+        <div class="section-card-header" style="margin-bottom:1rem">
+          <div class="section-title">Materias</div>
+          <button class="btn btn-primary btn-sm" onclick="openModalMateria()">+ Nueva materia</button>
+        </div>
+        <div class="data-card">
+          <table class="data-table">
+            <thead><tr><th>Materia</th><th>Maestro asignado</th><th>Acciones</th></tr></thead>
+            <tbody id="materias-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── PERIODOS ── -->
+      <div id="v-periodos" class="view">
+        <div class="section-card-header" style="margin-bottom:1rem">
+          <div class="section-title">Periodos Escolares</div>
+          <button class="btn btn-primary btn-sm" onclick="openModalPeriodo()">+ Nuevo periodo</button>
+        </div>
+        <div class="data-card">
+          <table class="data-table">
+            <thead><tr><th>Nombre</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <tbody id="periodos-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Nuevo/Editar Usuario -->
+<div id="modal-usuario" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-title" id="modal-u-title">Nuevo Usuario</div>
+    <div class="form-grid">
+      <div class="field"><label>Nombre completo</label><input id="u-nombre" class="input" type="text" placeholder="Apellidos, Nombre"></div>
+      <div class="field"><label>Código de acceso</label><input id="u-codigo" class="input" type="text" placeholder="Ej. EST-0041"></div>
+      <div class="field">
+        <label>Rol</label>
+        <select id="u-rol" class="input">
+          <option value="estudiante">Estudiante</option>
+          <option value="maestro">Maestro</option>
+          <option value="admin">Administrador</option>
+        </select>
+      </div>
+      <div class="field"><label>Contraseña</label><input id="u-password" class="input" type="password" placeholder="Dejar vacío para no cambiar"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modal-usuario')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarUsuario()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Nueva Materia -->
+<div id="modal-materia" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-title">Nueva Materia</div>
+    <div class="form-grid">
+      <div class="field"><label>Nombre de la materia</label><input id="m-nombre" class="input" type="text" placeholder="Ej. Física"></div>
+      <div class="field">
+        <label>Maestro asignado</label>
+        <select id="m-maestro" class="input"></select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modal-materia')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarMateria()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Nuevo Periodo -->
+<div id="modal-periodo" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-title">Nuevo Periodo</div>
+    <div class="form-grid">
+      <div class="field"><label>Nombre del periodo</label><input id="p-nombre" class="input" type="text" placeholder="Ej. Periodo I · 2025"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modal-periodo')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarPeriodo()">Crear</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="js/app.js"></script>
+<script>
+  let usuario = null;
+  let editUserId = null;
+  let resumenData = {};
+
+  function showView(id, el) {
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+    if (el) el.classList.add("active");
+    // Cargar datos de la vista
+    if (id === "v-panel")    cargarPanel();
+    if (id === "v-usuarios") cargarUsuarios();
+    if (id === "v-materias") cargarMaterias();
+    if (id === "v-periodos") cargarPeriodos();
+  }
+
+  async function init() {
+    usuario = await requireAuth();
+    if (usuario.rol !== "admin") { window.location.href = "index.html"; return; }
+    document.getElementById("sb-nombre").textContent = usuario.nombre;
+    cargarPanel();
+  }
+
+  // ── PANEL GENERAL ──────────────────────────────────────
+  async function cargarPanel() {
+    const r = await GET("/resumen");
+    resumenData = r;
+
+    const pctTotal = Math.round((r.total_usuarios / r.max_total) * 100);
+    const pctEst   = Math.round((r.total_estudiantes / r.max_estudiantes) * 100);
+
+    document.getElementById("stats-grid").innerHTML = `
+      <div class="stat-card stat-accent">
+        <div class="stat-label">Usuarios totales</div>
+        <div class="stat-value">${r.total_usuarios}</div>
+        <div class="stat-sub">de ${r.max_total} máximo</div>
+        <div class="capacity-wrap"><div class="capacity-bar ${r.total_usuarios >= r.max_total ? 'full' : ''}" style="width:${pctTotal}%"></div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Estudiantes</div>
+        <div class="stat-value">${r.total_estudiantes}</div>
+        <div class="stat-sub">de ${r.max_estudiantes} máximo</div>
+        <div class="capacity-wrap"><div class="capacity-bar ${r.total_estudiantes >= r.max_estudiantes ? 'full' : ''}" style="width:${pctEst}%"></div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Maestros</div>
+        <div class="stat-value">${r.total_maestros}</div>
+        <div class="stat-sub">docentes registrados</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Notas registradas</div>
+        <div class="stat-value">${r.total_notas}</div>
+        <div class="stat-sub">${r.periodo_activo ? 'Periodo activo: ' + r.periodo_activo : 'Sin periodo activo'}</div>
+      </div>
+    `;
+
+    const periodos = await GET("/periodos");
+    document.getElementById("info-periodos").innerHTML = periodos.length
+      ? periodos.map(p => `
+        <div class="info-row">
+          <span class="info-row-label">${p.nombre}</span>
+          <span class="info-row-value">
+            <span class="dot ${p.activo ? "dot-green" : "dot-gray"}"></span>
+            ${p.activo ? "Abierto" : "Cerrado"}
+          </span>
+        </div>`).join("")
+      : `<div class="info-row"><span class="info-row-label" style="color:var(--gray-400)">Sin periodos creados aún</span></div>`;
+
+    document.getElementById("avance-tbody").innerHTML = r.avance_materias.length
+      ? r.avance_materias.map(m => {
+          const pct = r.total_estudiantes > 0 ? Math.round((m.ingresadas / r.total_estudiantes) * 100) : 0;
+          const color = pct >= 80 ? "var(--green)" : pct >= 50 ? "var(--gold)" : "var(--red)";
+          return `<tr>
+            <td style="font-weight:500">${m.materia}</td>
+            <td style="color:var(--gray-600);font-size:12px">${m.maestro}</td>
+            <td>
+              <div class="progress-row">
+                <div class="progress-bar-wrap">
+                  <div class="progress-bar" style="width:${pct}%;background:${color}"></div>
+                </div>
+                <span style="font-size:11px;color:var(--gray-400);white-space:nowrap">${m.ingresadas}/${r.total_estudiantes}</span>
+              </div>
+            </td>
+          </tr>`;
+        }).join("")
+      : `<tr><td colspan="3" style="text-align:center;color:var(--gray-400);padding:2rem;font-size:13px">Sin materias creadas</td></tr>`;
+  }
+
+  // ── USUARIOS ──────────────────────────────────────────
+  async function cargarUsuarios() {
+    const [usuarios, r] = await Promise.all([GET("/usuarios"), GET("/resumen")]);
+    const cap = document.getElementById("capacidad-label");
+    cap.textContent = `${r.total_usuarios} de ${r.max_total} usuarios · ${r.total_estudiantes} de ${r.max_estudiantes} estudiantes`;
+
+    document.getElementById("usuarios-tbody").innerHTML = usuarios.map(u => `
+      <tr>
+        <td style="font-weight:500">${u.nombre}</td>
+        <td style="font-family:'Source Code Pro',monospace;font-size:12px;color:var(--gray-400)">${u.codigo}</td>
+        <td><span class="tag tag-${u.rol}">${u.rol}</span></td>
+        <td><span class="dot ${u.activo ? "dot-green" : "dot-gray"}"></span> ${u.activo ? "Activo" : "Inactivo"}</td>
+        <td>
+          <div class="action-btns">
+            <button class="btn btn-outline btn-sm" onclick='openModalEditar(${JSON.stringify(u)})'>Editar</button>
+            <button class="btn btn-outline btn-sm" onclick="toggleActivo(${u.id},${u.activo})">${u.activo ? "Desactivar" : "Activar"}</button>
+            <button class="btn btn-danger btn-sm" onclick="eliminarUsuario(${u.id},'${u.nombre.replace(/'/g,"\\'")}')">Eliminar</button>
+          </div>
+        </td>
+      </tr>`).join("");
+  }
+
+  function openModalUsuario() {
+    editUserId = null;
+    document.getElementById("modal-u-title").textContent = "Nuevo Usuario";
+    ["u-nombre","u-codigo","u-password"].forEach(id => document.getElementById(id).value = "");
+    document.getElementById("u-rol").value = "estudiante";
+    document.getElementById("modal-usuario").classList.add("open");
+  }
+
+  function openModalEditar(u) {
+    editUserId = u.id;
+    document.getElementById("modal-u-title").textContent = "Editar Usuario";
+    document.getElementById("u-nombre").value = u.nombre;
+    document.getElementById("u-codigo").value = u.codigo;
+    document.getElementById("u-rol").value = u.rol;
+    document.getElementById("u-password").value = "";
+    document.getElementById("modal-usuario").classList.add("open");
+  }
+
+  async function guardarUsuario() {
+    const nombre   = document.getElementById("u-nombre").value.trim();
+    const codigo   = document.getElementById("u-codigo").value.trim();
+    const rol      = document.getElementById("u-rol").value;
+    const password = document.getElementById("u-password").value;
+    if (!nombre || !codigo) { toast("Nombre y código son obligatorios","error"); return; }
+    try {
+      if (editUserId) {
+        await PATCH(`/usuarios/${editUserId}`, { nombre, password });
+      } else {
+        if (!password) { toast("La contraseña es obligatoria para nuevos usuarios","error"); return; }
+        await POST("/usuarios", { nombre, codigo, rol, password });
+      }
+      toast("Usuario guardado");
+      closeModal("modal-usuario");
+      cargarUsuarios();
+      cargarPanel();
+    } catch(e) { toast(e.message,"error"); }
+  }
+
+  async function toggleActivo(uid, actual) {
+    await PATCH(`/usuarios/${uid}`, { activo: !actual });
+    toast("Estado actualizado");
+    cargarUsuarios();
+  }
+
+  async function eliminarUsuario(uid, nombre) {
+    if (!confirm(`¿Eliminar al usuario "${nombre}" y todas sus notas? Esta acción no se puede deshacer.`)) return;
+    try {
+      await DELETE(`/usuarios/${uid}`);
+      toast("Usuario eliminado");
+      cargarUsuarios();
+      cargarPanel();
+    } catch(e) { toast(e.message,"error"); }
+  }
+
+  // ── MATERIAS ──────────────────────────────────────────
+  async function cargarMaterias() {
+    const materias = await GET("/materias");
+    document.getElementById("materias-tbody").innerHTML = materias.length
+      ? materias.map(m => `
+        <tr>
+          <td style="font-weight:500">${m.nombre}</td>
+          <td style="color:var(--gray-600)">${m.maestro}</td>
+          <td>
+            <button class="btn btn-danger btn-sm" onclick="eliminarMateria(${m.id},'${m.nombre.replace(/'/g,"\\'")}')">Eliminar</button>
+          </td>
+        </tr>`).join("")
+      : `<tr><td colspan="3" style="text-align:center;color:var(--gray-400);padding:2rem;font-size:13px">Sin materias registradas</td></tr>`;
+  }
+
+  async function openModalMateria() {
+    document.getElementById("m-nombre").value = "";
+    const maestros = await GET("/maestros");
+    const sel = document.getElementById("m-maestro");
+    sel.innerHTML = maestros.length
+      ? maestros.map(m => `<option value="${m.id}">${m.nombre}</option>`).join("")
+      : `<option value="">Sin maestros disponibles</option>`;
+    document.getElementById("modal-materia").classList.add("open");
+  }
+
+  async function guardarMateria() {
+    const nombre    = document.getElementById("m-nombre").value.trim();
+    const maestroId = document.getElementById("m-maestro").value;
+    if (!nombre) { toast("Ingresa el nombre de la materia","error"); return; }
+    try {
+      await POST("/materias", { nombre, maestro_id: maestroId || null });
+      toast("Materia creada");
+      closeModal("modal-materia");
+      cargarMaterias();
+    } catch(e) { toast(e.message,"error"); }
+  }
+
+  async function eliminarMateria(id, nombre) {
+    if (!confirm(`¿Eliminar la materia "${nombre}" y todas sus notas asociadas?`)) return;
+    await DELETE(`/materias/${id}`);
+    toast("Materia eliminada");
+    cargarMaterias();
+  }
+
+  // ── PERIODOS ──────────────────────────────────────────
+  async function cargarPeriodos() {
+    const periodos = await GET("/periodos");
+    document.getElementById("periodos-tbody").innerHTML = periodos.length
+      ? periodos.map(p => `
+        <tr>
+          <td style="font-weight:500">${p.nombre}</td>
+          <td>
+            <span class="periodo-badge ${p.activo ? "periodo-open" : "periodo-closed"}">
+              ${p.activo ? "● Abierto" : "● Cerrado"}
+            </span>
+          </td>
+          <td>
+            <button class="btn btn-outline btn-sm" onclick="togglePeriodo(${p.id})">
+              ${p.activo ? "Cerrar periodo" : "Abrir periodo"}
+            </button>
+          </td>
+        </tr>`).join("")
+      : `<tr><td colspan="3" style="text-align:center;color:var(--gray-400);padding:2rem;font-size:13px">Sin periodos creados</td></tr>`;
+  }
+
+  async function openModalPeriodo() {
+    document.getElementById("p-nombre").value = "";
+    document.getElementById("modal-periodo").classList.add("open");
+  }
+
+  async function guardarPeriodo() {
+    const nombre = document.getElementById("p-nombre").value.trim();
+    if (!nombre) { toast("Ingresa el nombre del periodo","error"); return; }
+    try {
+      await POST("/periodos", { nombre, activo: false });
+      toast("Periodo creado");
+      closeModal("modal-periodo");
+      cargarPeriodos();
+    } catch(e) { toast(e.message,"error"); }
+  }
+
+  async function togglePeriodo(id) {
+    await POST(`/periodos/${id}/toggle`);
+    toast("Estado del periodo actualizado");
+    cargarPeriodos();
+    cargarPanel();
+  }
+
+  // ── UTILS ─────────────────────────────────────────────
+  function closeModal(id) { document.getElementById(id).classList.remove("open"); }
+  document.querySelectorAll(".modal-overlay").forEach(m => {
+    m.addEventListener("click", e => { if (e.target === m) m.classList.remove("open"); });
+  });
+
+  async function logout() {
+    await POST("/logout").catch(() => {});
+    localStorage.removeItem("sn_token");
+    window.location.href = "index.html";
+  }
+
+  init();
+</script>
+</body>
+</html>
